@@ -63,7 +63,7 @@ src/
       login/page.tsx               # 登入、註冊也在 (shop) 內，共用前台 Header/Footer
       register/page.tsx
     admin/
-      layout.tsx                   # 側邊選單 + requireAdmin()
+      layout.tsx                   # Suspense + AdminShell（確認管理員後渲染外框與選單）
       page.tsx                     # 概覽
       categories/page.tsx
       products/page.tsx
@@ -113,7 +113,7 @@ src/
     utils.ts                       # cn() 等（shadcn）
   components/
     ui/                            # shadcn 產生的元件
-    layout/                        # Header Footer AdminSidebar Pagination
+    layout/                        # Header Footer BrandLink Pagination AdminShell（後台外框與權限）AdminNav（後台選單）
   proxy.ts
 ```
 

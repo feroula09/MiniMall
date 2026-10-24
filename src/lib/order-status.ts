@@ -30,6 +30,9 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   CANCELLED: "已取消",
 };
 
+/** 已付款（含之後的出貨、完成）的狀態，計入營收 */
+export const REVENUE_STATUSES: readonly OrderStatus[] = ["PAID", "SHIPPED", "COMPLETED"];
+
 /** 所有訂單狀態，依流程順序 */
 export const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABEL) as [OrderStatus, ...OrderStatus[]];
 
