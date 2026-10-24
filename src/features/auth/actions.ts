@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { fail, failFromZod, type ActionResult } from "@/lib/action-result";
 import { isUniqueViolation } from "@/lib/db-errors";
+import { formText } from "@/lib/form-data";
 import { prisma } from "@/lib/prisma";
 import { sanitizeNext } from "@/lib/safe-redirect";
 import { createSession, deleteSession } from "@/lib/session";
@@ -16,17 +17,12 @@ export type AuthFormState = ActionResult & { values?: { name?: string; email?: s
 const DUMMY_HASH = "$2b$10$meZlowL9AJyn4kHM1NfTM.BPLHbP8rYfIMePxQIuYSQAyIi8Sd1PW";
 const BCRYPT_COST = 10;
 
-const text = (formData: FormData, key: string) => {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-};
-
 export async function register(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const values = { name: text(formData, "name"), email: text(formData, "email") };
+  const values = { name: formText(formData, "name"), email: formText(formData, "email") };
   const parsed = registerSchema.safeParse({
     ...values,
-    password: text(formData, "password"),
-    confirmPassword: text(formData, "confirmPassword"),
+    password: formText(formData, "password"),
+    confirmPassword: formText(formData, "confirmPassword"),
   });
   if (!parsed.success) return { ...failFromZod(parsed.error), values };
 
@@ -52,8 +48,8 @@ export async function register(_prev: AuthFormState, formData: FormData): Promis
 }
 
 export async function login(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const values = { email: text(formData, "email") };
-  const parsed = loginSchema.safeParse({ ...values, password: text(formData, "password") });
+  const values = { email: formText(formData, "email") };
+  const parsed = loginSchema.safeParse({ ...values, password: formText(formData, "password") });
   if (!parsed.success) return { ...failFromZod(parsed.error), values };
 
   const user = await prisma.user.findUnique({

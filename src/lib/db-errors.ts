@@ -19,6 +19,11 @@ export function uniqueViolationFields(e: unknown): string[] {
   return typeof target === "string" ? [target] : [];
 }
 
+/** update / delete 找不到要操作的資料 */
+export function isRecordNotFound(e: unknown): boolean {
+  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025";
+}
+
 /** 外鍵限制（例如分類下仍有商品時刪除分類） */
 export function isForeignKeyViolation(e: unknown): boolean {
   return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003";

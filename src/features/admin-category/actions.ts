@@ -11,17 +11,13 @@ import {
   uniqueViolationFields,
 } from "@/lib/db-errors";
 import { isId } from "@/lib/ids";
+import { formText } from "@/lib/form-data";
 import { prisma } from "@/lib/prisma";
 import { categoryIdSchema, categorySchema, type CategoryInput } from "./schemas";
 
 const PATH = "/admin/categories";
 
 export type CategoryFormState = ActionResult & { values?: Record<keyof CategoryInput, string> };
-
-const text = (formData: FormData, key: string) => {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-};
 
 export async function createCategory(_prev: CategoryFormState, formData: FormData): Promise<CategoryFormState> {
   await requireAdmin(PATH);
@@ -36,9 +32,9 @@ export async function updateCategory(_prev: CategoryFormState, formData: FormDat
 }
 
 const formValues = (formData: FormData) => ({
-  name: text(formData, "name"),
-  slug: text(formData, "slug"),
-  sortOrder: text(formData, "sortOrder"),
+  name: formText(formData, "name"),
+  slug: formText(formData, "slug"),
+  sortOrder: formText(formData, "sortOrder"),
 });
 
 async function save(formData: FormData, id?: string): Promise<CategoryFormState> {

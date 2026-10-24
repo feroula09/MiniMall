@@ -320,9 +320,9 @@ type ActionResult<T = void> =
 | orders | `confirmReceipt` | 使用者（本人） | `orderId` | 狀態機 `confirm` |
 | admin-category | `createCategory` / `updateCategory` | 管理員 | `name` 1–20、`slug` `^[a-z0-9-]+$`、`sortOrder` int | 名稱 / slug 重複 |
 | admin-category | `deleteCategory` | 管理員 | `id` | 分類下仍有商品 |
-| admin-product | `createProduct` / `updateProduct` | 管理員 | `name` 1–100、`description` ≤ 2000、`price` 以元輸入轉為分（> 0）、`stock` int ≥ 0、`categoryId`、`isActive`、`image?: File` | 分類不存在；圖片驗證見 9.3 |
-| admin-product | `toggleProductActive` | 管理員 | `id` | — |
-| admin-product | `deleteProduct` | 管理員 | `id` | — |
+| admin-product | `createProduct` / `updateProduct` | 管理員 | `name` 1–100、`description` ≤ 2000、`price` 以元輸入轉為分（> 0，≤ 100 萬元，最多兩位小數）、`stock` 十進位整數 0–99999、`categoryId`、`isActive`（checkbox）、`image?: File`、`removeImage?`（僅編輯） | 分類不存在；同時有人換圖；圖片驗證見 9.3 |
+| admin-product | `toggleProductActive` | 管理員 | `id`、`isActive`（目標狀態，不是反轉） | 商品不存在 |
+| admin-product | `deleteProduct` | 管理員 | `id` | 商品不存在；購物車項目 Cascade、訂單明細 `productId` 設為 null，並刪除上傳圖 |
 | admin-order | `shipOrder` | 管理員 | `orderId` | 狀態機 `ship` |
 | admin-order | `adminCancelOrder` | 管理員 | `orderId` | 狀態機 `cancel`，見 9.2 |
 
@@ -345,14 +345,16 @@ type ActionResult<T = void> =
 在交易內：條件更新狀態（`where: { id, status: { in: ['PENDING', 'PAID'] } }`）→ 成功後逐項回補庫存（`productId` 為 `null` 的明細略過）。
 
 ### 9.3 圖片上傳
-- 由 `admin-product` 的 action 接收 `FormData` 中的 `File`
-- `src/lib/upload.ts`：
-  - 檢查 MIME 為 `image/jpeg`、`image/png`、`image/webp`，並檢查檔頭 magic bytes
-  - 大小 ≤ 2MB
+- 由 `admin-product` 的 action 接收 `FormData` 中的 `File`（沒有選檔時瀏覽器仍會送出檔名為空、大小為 0 的 File，視為沒有圖片）
+- `src/lib/image-type.ts`（前後端共用）：`imageFileError` 檢查 MIME 為 `image/jpeg`、`image/png`、`image/webp` 且大小 ≤ 2MB；`detectImageType` 依檔頭 magic bytes 判斷實際格式。前端選檔時先檢查一次，不合格的檔案不送出
+- `src/lib/upload.ts`（server-only）：
+  - 通過 `imageFileError` 後再用 `detectImageType` 檢查內容，副檔名依實際格式決定
   - 檔名 `crypto.randomUUID() + 副檔名`，不使用使用者提供的檔名
   - 寫入 `storage/uploads/`，資料庫存 `/uploads/<檔名>`
-  - 更換圖片時刪除舊的上傳檔（`/seed/` 開頭的不刪）
-- `src/app/uploads/[name]/route.ts`：以正規表示式 `^[0-9a-f-]{36}\.(jpg|png|webp)$` 驗證檔名，讀檔並回傳正確 `Content-Type` 與快取標頭；不符或不存在回 404
+  - 刪除只處理 `/uploads/` 開頭且檔名符合格式的路徑（`/seed/` 圖片不刪），檔案不存在時略過
+- action 的順序：驗證欄位與圖片 → 確認分類存在、讀取舊圖 → 寫入圖檔 → 寫入資料庫。資料庫失敗時刪掉剛寫入的圖檔；換圖時以 `updateMany({ where: { id, image: 舊圖 } })` 條件更新，`count === 0` 表示同時有人換圖（或商品已刪除），成功後才刪舊的上傳檔
+- Server Action 的請求大小預設上限 1MB，`next.config.ts` 設為 `experimental.serverActions.bodySizeLimit: "3mb"`（2MB 圖片加上其他欄位與 multipart 開銷）
+- `src/app/uploads/[name]/route.ts`：檔名必須是小寫 UUID + `.jpg|.png|.webp`，讀檔並回傳對應 `Content-Type`、`Cache-Control: public, max-age=31536000, immutable`、`X-Content-Type-Options: nosniff`；不符或不存在回 404
 - 不放在 `public/` 的原因：`next build && next start` 只服務建置當下已存在的 `public` 檔案，執行期間上傳的檔案會 404
 
 ### 9.4 商品搜尋

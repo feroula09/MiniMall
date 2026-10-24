@@ -9,6 +9,7 @@ import { isId } from "@/lib/ids";
 import { explainOrderConflict } from "@/lib/order-mutations";
 import { generateOrderNo } from "@/lib/order-no";
 import { transitionUpdate } from "@/lib/order-status";
+import { formText } from "@/lib/form-data";
 import { prisma } from "@/lib/prisma";
 import { checkoutSchema, expectedTotalSchema, payOrderSchema, type CheckoutInput } from "./schemas";
 
@@ -21,17 +22,12 @@ class CheckoutError extends Error {
   }
 }
 
-const text = (formData: FormData, key: string) => {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-};
-
 export async function placeOrder(_prev: CheckoutFormState, formData: FormData): Promise<CheckoutFormState> {
   const user = await requireUser("/checkout");
   const values = {
-    receiverName: text(formData, "receiverName"),
-    phone: text(formData, "phone"),
-    address: text(formData, "address"),
+    receiverName: formText(formData, "receiverName"),
+    phone: formText(formData, "phone"),
+    address: formText(formData, "address"),
   };
   const parsed = checkoutSchema.safeParse(values);
   if (!parsed.success) return { ...failFromZod(parsed.error), values };
