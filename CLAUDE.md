@@ -34,11 +34,11 @@ Seed 帳號：`admin@minimall.dev` / `admin1234`、`user@minimall.dev` / `user12
 ## 架構要點
 
 - **Cache Components**：讀資料庫、`cookies()`、`params`/`searchParams` 的元件必須包在 `<Suspense>` 內（或用 `'use cache'`），否則 build 失敗。page/layout 頂層不要直接 await 這些資料，改成「同步外殼 + Suspense 內的非同步子元件」。`'use cache'` 內不能讀 `cookies()`。寫這類程式前先查 `node_modules/next/dist/docs/01-app/01-getting-started/08-caching.md` 與 `02-guides/authentication-with-cache-components.md`。
-- **路由群組**：根 `layout.tsx` 只放 html/body/Toaster；前台 Header/Footer 在 `(shop)/layout.tsx`，後台版面在 `admin/layout.tsx`。
+- **路由群組**：根 `layout.tsx` 只放 html/body/Toaster；前台（含登入、註冊）的 Header/Footer 在 `(shop)/layout.tsx`，後台版面在 `admin/layout.tsx`。
 
 - **讀用 Server Components，寫用 Server Actions**，沒有 REST API 層。唯一的 Route Handler 是 `src/app/uploads/[name]/route.ts`。
 - **按功能拆模組**：業務邏輯放在 `src/features/<feature>/`（`actions.ts`、`queries.ts`、`schemas.ts`、`components/`），`src/app/` 的 page 只做路由與組裝。不同功能不要寫進同一個檔案；模組之間只透過對方的 `queries`/`actions` 互相呼叫。單檔超過約 200 行就拆分。
-- **權限在伺服器端逐一檢查**：`src/proxy.ts` 只做導向，不是安全邊界。每個 Server Action 的固定順序是「`requireUser()`/`requireAdmin()` → zod 驗證 → 資料歸屬檢查 → 業務邏輯 → `revalidatePath`」。角色以資料庫為準，JWT 內的 `role` 只給 proxy 用。
+- **權限在伺服器端逐一檢查**：`src/proxy.ts` 只做導向，不是安全邊界。每個 Server Action 的固定順序是「`requireUser()`/`requireAdmin()` → zod 驗證 → 資料歸屬檢查 → 業務邏輯 → `revalidatePath`」。JWT 只存 `userId`，角色一律由 `getCurrentUser()` 查資料庫判斷；proxy 只檢查是否登入。唯一例外是 `logout`（只刪 cookie）。
 - **訂單狀態只能經過 `src/lib/order-status.ts`**，狀態更新用 `updateMany({ where: { id, status: from } })` 做條件更新，`count === 0` 視為衝突。
 - **下單與取消必須在 `prisma.$transaction` 內**：條件扣減庫存（`stock: { gte: qty }`）防超賣；取消時回補庫存。總額以伺服器讀到的價格計算。
 - **金額一律為 `Int`（分）**，只在顯示時用 `src/lib/money.ts` 格式化。
@@ -51,6 +51,7 @@ Seed 帳號：`admin@minimall.dev` / `admin1234`、`user@minimall.dev` / `user12
 - Next.js 16：`middleware.ts` 已改名 `proxy.ts`；`params`、`searchParams`、`cookies()`、`headers()` 都要 `await`。
 - Prisma 6 + SQLite：可用 `enum`（`Role`、`OrderStatus`）；`contains` 不支援 `mode: 'insensitive'`。
 - TailwindCSS 4：沒有 `tailwind.config.js`，主題寫在 `src/app/globals.css` 的 `@theme`；透過 `next.config.ts` 的 `@tailwindcss/turbopack` loader 編譯，沒有 PostCSS 設定。
+- shadcn 元件底層是 Base UI：組合元素用 `render` prop（不是 `asChild`）；`render` 成原生 `<button>` 時要加 `nativeButton`。
 - shadcn 元件的 `cn` 來自官方 `cn` 套件（取代 clsx + tailwind-merge），`src/lib/utils.ts` 只是轉出。
 - npm 11 預設擋安裝腳本，`package.json` 的 `allowScripts` 鎖了版本；升級 Prisma 或 esbuild 後要再執行 `npm install-scripts approve <pkg>`。
 - Prisma seed 設定在 `package.json#prisma`，Prisma 6 會提示此寫法在 7 版移除，目前可忽略。

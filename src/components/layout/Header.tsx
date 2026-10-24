@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { ShoppingCart, Store } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { UserMenu, UserMenuSkeleton } from "@/features/auth/components/UserMenu";
 import { SearchBar, SearchForm } from "@/features/catalog/components/SearchBar";
 
 export function Header() {
@@ -29,12 +30,10 @@ export function Header() {
           >
             <ShoppingCart aria-hidden />
           </Link>
-          <Link href="/login" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-            登入
-          </Link>
-          <Link href="/register" className={buttonVariants({ size: "sm" })}>
-            註冊
-          </Link>
+          {/* 登入狀態依請求而定，在靜態外殼之後串流進來 */}
+          <Suspense fallback={<UserMenuSkeleton />}>
+            <UserMenu />
+          </Suspense>
         </nav>
       </div>
     </header>

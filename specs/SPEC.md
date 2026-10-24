@@ -60,8 +60,7 @@ src/
       orders/page.tsx
       orders/[id]/page.tsx
       orders/[id]/pay/page.tsx
-    (auth)/
-      login/page.tsx
+      login/page.tsx               # 登入、註冊也在 (shop) 內，共用前台 Header/Footer
       register/page.tsx
     admin/
       layout.tsx                   # 側邊選單 + requireAdmin()
@@ -256,18 +255,20 @@ model OrderItem {
 
 - 密碼：`bcryptjs`，cost 10
 - Token：`jose` `SignJWT`，演算法 HS256，金鑰為 `SESSION_SECRET`
-  - payload：`{ sub: userId, role }`，有效期 7 天
+  - payload 只有 `{ sub: userId }`，有效期 7 天。不放角色等會變動的資料，升降權立即生效
+  - 簽發與驗證在 `src/lib/session-token.ts`（不依賴 `cookies()`，proxy 與單元測試共用）
 - Cookie：名稱 `session`；`httpOnly`、`sameSite=lax`、`path=/`、`secure` 僅在 production 開啟、`maxAge` 7 天
 - `src/lib/session.ts`：`createSession(user)`、`readSession()`、`deleteSession()`（`cookies()` 需 `await`）
 - `src/lib/auth-guard.ts`：
   - `getCurrentUser()`：驗證 token 後**從資料庫讀取**使用者（`id, name, email, role`），以 React `cache()` 包裝，同一請求只查一次
   - `requireUser()`：未登入則 `redirect('/login?next=...')`
   - `requireAdmin()`：非 `ADMIN` 則 `redirect('/')`
-  - 權限以資料庫中的 `role` 為準；JWT 內的 `role` 只供 `proxy.ts` 做導向
+  - 權限一律以資料庫中的 `role` 為準
 - `src/proxy.ts`：
   - matcher：`/cart`、`/checkout`、`/orders/:path*`、`/admin/:path*`
-  - token 無效 → 導向 `/login?next=<原路徑>`
-  - `/admin` 且 token 內 `role !== ADMIN` → 導向 `/`
+  - 只驗 token：無效 → 導向 `/login?next=<原路徑>`；不判斷角色（由 `requireAdmin` 查資料庫）
+- 登入：帳號不存在時仍以假雜湊執行一次 `bcrypt.compare`，回應時間與密碼錯誤相同
+- 登出：選單外的隱藏 `<form action={logout}>`，選單按鈕以 `form` 屬性送出，沒有 JS 也能運作
 - `next` 參數只接受以 `/` 開頭且非 `//` 開頭的站內路徑，避免開放式重導
 
 ## 7. 路由表
@@ -276,7 +277,7 @@ model OrderItem {
 |---|---|---|
 | `/` | 公開 | 商品列表；`?q=`、`?category=<slug>`、`?sort=newest\|price_asc\|price_desc`、`?page=` |
 | `/products/[id]` | 公開 | 商品詳情；下架或不存在 → 顯示 not-found 內容（狀態碼見 2.1） |
-| `/login`、`/register` | 公開（已登入導向 `/`） | `?next=` 登入後回跳 |
+| `/login`、`/register` | 公開（已登入直接導向 `next`，預設 `/`） | `?next=` 登入後回跳 |
 | `/cart` | 使用者 | 購物車 |
 | `/checkout` | 使用者 | 結帳；購物車空或有無效項目 → 導回 `/cart` |
 | `/orders` | 使用者 | 我的訂單；`?status=` |
@@ -308,7 +309,7 @@ type ActionResult<T = void> =
 |---|---|---|---|---|
 | auth | `register` | 公開 | `name` 1–30、`email`、`password` ≥ 8、`confirmPassword` 相符 | Email 已存在 |
 | auth | `login` | 公開 | `email`、`password`、`next?` | 統一錯誤「Email 或密碼錯誤」 |
-| auth | `logout` | 使用者 | — | — |
+| auth | `logout` | 任何人 | — | 只刪除 cookie，未登入時等同無動作，因此不呼叫 `requireUser` |
 | cart | `addToCart` | 使用者 | `productId`、`quantity` int ≥ 1 | 商品下架；累加後超過庫存 |
 | cart | `updateCartItem` | 使用者 | `itemId`、`quantity` int ≥ 1 | 項目歸屬；超過庫存 |
 | cart | `removeCartItem` | 使用者 | `itemId` | 項目歸屬 |

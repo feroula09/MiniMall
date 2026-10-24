@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { loginHref } from "@/lib/safe-redirect";
 import { QuantityInput } from "./QuantityInput";
 
 type Props = { productId: string; stock: number };
@@ -28,7 +29,7 @@ export function PurchasePanel({ productId, stock }: Props) {
     <div className="flex flex-wrap items-center gap-3">
       <QuantityInput value={quantity} max={stock} onChange={setQuantity} />
       <Link
-        href={`/login?next=${encodeURIComponent(`/products/${productId}`)}`}
+        href={loginHref(`/products/${productId}`)}
         className={buttonVariants({ size: "lg", className: "flex-1 sm:flex-none" })}
       >
         <ShoppingCart aria-hidden />
