@@ -10,3 +10,16 @@ export function isDbError(e: unknown): boolean {
 export function isUniqueViolation(e: unknown): boolean {
   return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
 }
+
+/** 唯一索引衝突時，資料庫回報的欄位名稱（例如 ["slug"]）；取不到時為空陣列 */
+export function uniqueViolationFields(e: unknown): string[] {
+  if (!(e instanceof Prisma.PrismaClientKnownRequestError) || e.code !== "P2002") return [];
+  const target = e.meta?.target;
+  if (Array.isArray(target)) return target.map(String);
+  return typeof target === "string" ? [target] : [];
+}
+
+/** 外鍵限制（例如分類下仍有商品時刪除分類） */
+export function isForeignKeyViolation(e: unknown): boolean {
+  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003";
+}

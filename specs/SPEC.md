@@ -286,7 +286,7 @@ model OrderItem {
 | `/orders/[id]/pay` | 使用者（本人） | 模擬付款；付款後同頁顯示「付款成功」，其他狀態顯示目前狀態與「查看訂單」連結 |
 | `/admin` | 管理員 | 概覽 |
 | `/admin/categories` | 管理員 | 分類列表 + 新增 / 編輯對話框 |
-| `/admin/products` | 管理員 | `?q=`、`?category=`、`?active=true\|false`、`?page=` |
+| `/admin/products` | 管理員 | `?q=`、`?category=<slug>`、`?active=true\|false`、`?page=` |
 | `/admin/products/new`、`/admin/products/[id]/edit` | 管理員 | 商品表單 |
 | `/admin/orders` | 管理員 | `?status=`、`?q=<orderNo>`、`?page=` |
 | `/admin/orders/[id]` | 管理員 | 訂單詳情、出貨、取消 |
