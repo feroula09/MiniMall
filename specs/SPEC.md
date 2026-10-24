@@ -84,7 +84,7 @@ src/
     cart/
       actions.ts                   # addToCart / updateCartItem / removeCartItem
       queries.ts                   # getCart / getCartCount
-      components/                  # AddToCartButton CartItemRow CartSummary
+      components/                  # CartLink CartItemRow CartView（加入購物車由 catalog 的 PurchasePanel 呼叫 addToCart）
     checkout/
       actions.ts                   # placeOrder / payOrder
       schemas.ts                   # checkoutSchema
@@ -190,6 +190,7 @@ model CartItem {
   userId    String
   productId String
   quantity  Int
+  createdAt DateTime @default(now())        // 購物車依加入順序顯示
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
@@ -310,8 +311,8 @@ type ActionResult<T = void> =
 | auth | `register` | 公開 | `name` 1–30、`email`、`password` ≥ 8、`confirmPassword` 相符 | Email 已存在 |
 | auth | `login` | 公開 | `email`、`password`、`next?` | 統一錯誤「Email 或密碼錯誤」 |
 | auth | `logout` | 任何人 | — | 只刪除 cookie，未登入時等同無動作，因此不呼叫 `requireUser` |
-| cart | `addToCart` | 使用者 | `productId`、`quantity` int ≥ 1 | 商品下架；累加後超過庫存 |
-| cart | `updateCartItem` | 使用者 | `itemId`、`quantity` int ≥ 1 | 項目歸屬；超過庫存 |
+| cart | `addToCart` | 使用者 | `productId`、`quantity` int 1–99 | 商品下架；累加後超過 `purchaseLimit(stock)`（條件式更新，並發安全） |
+| cart | `updateCartItem` | 使用者 | `itemId`、`quantity` int 1–99 | 項目歸屬；超過 `purchaseLimit(stock)` |
 | cart | `removeCartItem` | 使用者 | `itemId` | 項目歸屬 |
 | checkout | `placeOrder` | 使用者 | `receiverName` 1–30、`phone` `^09\d{8}$`、`address` 5–200 | 見 9.1 |
 | checkout | `payOrder` | 使用者（本人） | `orderId` | 狀態機 `pay` |
@@ -325,7 +326,7 @@ type ActionResult<T = void> =
 | admin-order | `shipOrder` | 管理員 | `orderId` | 狀態機 `ship` |
 | admin-order | `adminCancelOrder` | 管理員 | `orderId` | 狀態機 `cancel`，見 9.2 |
 
-每個 action 開頭的順序固定：**權限檢查 → zod 驗證 → 資料歸屬檢查 → 業務邏輯 → revalidate**。
+每個 action 的順序固定：**權限檢查 → zod 驗證 → 資料歸屬檢查 → 業務邏輯 → 更新畫面**。資料沒有快取，更新畫面用 `refresh()`；資料庫錯誤回傳「系統忙碌中」而不是讓例外拋到前端。
 
 ## 9. 關鍵流程
 

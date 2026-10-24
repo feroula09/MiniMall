@@ -38,9 +38,10 @@ Seed 帳號：`admin@minimall.dev` / `admin1234`、`user@minimall.dev` / `user12
 
 - **讀用 Server Components，寫用 Server Actions**，沒有 REST API 層。唯一的 Route Handler 是 `src/app/uploads/[name]/route.ts`。
 - **按功能拆模組**：業務邏輯放在 `src/features/<feature>/`（`actions.ts`、`queries.ts`、`schemas.ts`、`components/`），`src/app/` 的 page 只做路由與組裝。不同功能不要寫進同一個檔案；模組之間只透過對方的 `queries`/`actions` 互相呼叫。單檔超過約 200 行就拆分。
-- **權限在伺服器端逐一檢查**：`src/proxy.ts` 只做導向，不是安全邊界。每個 Server Action 的固定順序是「`requireUser()`/`requireAdmin()` → zod 驗證 → 資料歸屬檢查 → 業務邏輯 → `revalidatePath`」。JWT 只存 `userId`，角色一律由 `getCurrentUser()` 查資料庫判斷；proxy 只檢查是否登入。唯一例外是 `logout`（只刪 cookie）。
+- **權限在伺服器端逐一檢查**：`src/proxy.ts` 只做導向，不是安全邊界。每個 Server Action 的固定順序是「`requireUser()`/`requireAdmin()` → zod 驗證 → 資料歸屬檢查 → 業務邏輯 → 更新畫面」。資料目前都沒有 `'use cache'`，更新畫面用 `refresh()`（`next/cache`）；之後若加了快取，改用 `updateTag`/`revalidatePath`。JWT 只存 `userId`，角色一律由 `getCurrentUser()` 查資料庫判斷；proxy 只檢查是否登入。唯一例外是 `logout`（只刪 cookie）。
 - **訂單狀態只能經過 `src/lib/order-status.ts`**，狀態更新用 `updateMany({ where: { id, status: from } })` 做條件更新，`count === 0` 視為衝突。
 - **下單與取消必須在 `prisma.$transaction` 內**：條件扣減庫存（`stock: { gte: qty }`）防超賣；取消時回補庫存。總額以伺服器讀到的價格計算。
+- **購買數量上限**統一用 `src/lib/purchase-limit.ts` 的 `purchaseLimit(stock)`；累加購物車數量用條件式 `updateMany`（`quantity: { lte: limit - adding }`）避免並發超量。
 - **金額一律為 `Int`（分）**，只在顯示時用 `src/lib/money.ts` 格式化。
 - **訂單明細存快照**（名稱、圖片、單價），不要從 `Product` 回讀歷史訂單資料。
 - **上傳圖片存 `storage/uploads/`，不能放 `public/`**：`next start` 不會服務建置後才新增的 public 檔案。資料庫存 `/uploads/<uuid>.<ext>`，seed 圖片是 `public/seed/*.svg`。

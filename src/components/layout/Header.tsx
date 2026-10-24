@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { ShoppingCart, Store } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { Store } from "lucide-react";
 import { UserMenu, UserMenuSkeleton } from "@/features/auth/components/UserMenu";
+import { CartLink, CartLinkView } from "@/features/cart/components/CartLink";
 import { SearchBar, SearchForm } from "@/features/catalog/components/SearchBar";
 
 export function Header() {
@@ -23,13 +23,9 @@ export function Header() {
         </div>
 
         <nav className="ml-auto flex shrink-0 items-center gap-1">
-          <Link
-            href="/cart"
-            aria-label="購物車"
-            className={buttonVariants({ variant: "ghost", size: "icon" })}
-          >
-            <ShoppingCart aria-hidden />
-          </Link>
+          <Suspense fallback={<CartLinkView />}>
+            <CartLink />
+          </Suspense>
           {/* 登入狀態依請求而定，在靜態外殼之後串流進來 */}
           <Suspense fallback={<UserMenuSkeleton />}>
             <UserMenu />
