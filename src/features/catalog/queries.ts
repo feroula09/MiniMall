@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { PAGE_SIZE, type CatalogParams, type SortValue } from "./params";
@@ -65,3 +66,21 @@ export async function getProducts(params: CatalogParams): Promise<ProductPage> {
   }
   return { items: await findPage(pageCount), total, page: pageCount, pageCount };
 }
+
+const productDetailSelect = {
+  ...productCardSelect,
+  description: true,
+} satisfies Prisma.ProductSelect;
+
+export type ProductDetailData = Prisma.ProductGetPayload<{ select: typeof productDetailSelect }>;
+
+/**
+ * 前台商品詳情：不存在或已下架都回傳 null。
+ * 以 React cache 包裝，同一個請求內 generateMetadata 與頁面只查一次。
+ */
+export const getProductDetail = cache(async (id: string): Promise<ProductDetailData | null> => {
+  return prisma.product.findFirst({
+    where: { id, isActive: true },
+    select: productDetailSelect,
+  });
+});

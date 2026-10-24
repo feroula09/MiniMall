@@ -35,6 +35,7 @@
 - 預設**不快取**任何資料，確保庫存、價格即時；若之後要優化商品列表，再對 `catalog/queries.ts` 加 `'use cache'` + `cacheTag`，並在後台異動時 `updateTag`
 - `'use cache'` 範圍內不能呼叫 `cookies()` / `headers()`
 - GET Route Handler（`/uploads/[name]`）讀檔案時會自動在請求期執行，不需特別處理
+- 在 Suspense 內呼叫 `notFound()` 時靜態外殼已送出，HTTP 狀態碼仍是 200；畫面會顯示 not-found 內容，Next 也會加上 `<meta name="robots" content="noindex">`。本機專案接受此行為
 
 ## 3. 目錄結構
 
@@ -274,7 +275,7 @@ model OrderItem {
 | 路徑 | 權限 | 說明 / 參數 |
 |---|---|---|
 | `/` | 公開 | 商品列表；`?q=`、`?category=<slug>`、`?sort=newest\|price_asc\|price_desc`、`?page=` |
-| `/products/[id]` | 公開 | 商品詳情；下架或不存在 → 404 |
+| `/products/[id]` | 公開 | 商品詳情；下架或不存在 → 顯示 not-found 內容（狀態碼見 2.1） |
 | `/login`、`/register` | 公開（已登入導向 `/`） | `?next=` 登入後回跳 |
 | `/cart` | 使用者 | 購物車 |
 | `/checkout` | 使用者 | 結帳；購物車空或有無效項目 → 導回 `/cart` |
