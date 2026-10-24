@@ -1,7 +1,6 @@
 import { z } from "zod";
+import { idSchema as id } from "@/lib/ids";
 import { MAX_QUANTITY_PER_ITEM } from "@/lib/purchase-limit";
-
-const id = z.string().min(1).max(64);
 const quantity = z
   .number({ error: "數量格式錯誤" })
   .int("數量必須是整數")

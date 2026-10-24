@@ -1,9 +1,9 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { fail, failFromZod, type ActionResult } from "@/lib/action-result";
+import { isUniqueViolation } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
 import { sanitizeNext } from "@/lib/safe-redirect";
 import { createSession, deleteSession } from "@/lib/session";
@@ -43,7 +43,7 @@ export async function register(_prev: AuthFormState, formData: FormData): Promis
     });
   } catch (e) {
     // 兩個請求同時用同一個 Email 註冊時，由唯一索引擋下
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return emailTaken;
+    if (isUniqueViolation(e)) return emailTaken;
     throw e;
   }
 

@@ -240,7 +240,7 @@ model OrderItem {
 
 ## 5. 訂單狀態機
 
-集中定義在 `src/lib/order-status.ts`，所有改狀態的 action 都必須透過 `assertTransition(from, action)` 檢查。
+集中定義在 `src/lib/order-status.ts`。改狀態一律用 `transitionUpdate(action, actor)` 產生條件式更新（actor 無權限時直接拋錯）；`canTransition` 只用於決定 UI 要顯示哪些按鈕。
 
 | 動作 | 操作者 | 前置狀態 | 結果狀態 | 副作用 |
 |---|---|---|---|---|
@@ -283,7 +283,7 @@ model OrderItem {
 | `/checkout` | 使用者 | 結帳；購物車空或有無效項目 → 導回 `/cart` |
 | `/orders` | 使用者 | 我的訂單；`?status=` |
 | `/orders/[id]` | 使用者（本人） | 訂單詳情 |
-| `/orders/[id]/pay` | 使用者（本人） | 模擬付款；非 `PENDING` 導回詳情 |
+| `/orders/[id]/pay` | 使用者（本人） | 模擬付款；付款後同頁顯示「付款成功」，其他狀態顯示目前狀態與「查看訂單」連結 |
 | `/admin` | 管理員 | 概覽 |
 | `/admin/categories` | 管理員 | 分類列表 + 新增 / 編輯對話框 |
 | `/admin/products` | 管理員 | `?q=`、`?category=`、`?active=true\|false`、`?page=` |
@@ -336,10 +336,10 @@ type ActionResult<T = void> =
 2. 購物車為空 → 錯誤
 3. 逐項檢查 `isActive` 與 `stock >= quantity`，不符則回傳是哪個商品有問題
 4. 逐項條件扣減：`tx.product.updateMany({ where: { id, stock: { gte: qty } }, data: { stock: { decrement: qty } } })`，`count === 0` → 拋錯讓整筆交易回滾（防超賣）
-5. 以**伺服器端讀到的價格**計算總額（不信任前端）
+5. 以**伺服器端讀到的價格**計算總額（不信任前端），並與表單帶上的 `expectedTotal`（使用者在結帳頁看到的合計）比對；不一致時回滾並重新渲染結帳頁顯示新金額
 6. 建立 `Order` 與 `OrderItem`（寫入名稱、圖片、單價快照）
 7. 刪除該使用者的購物車項目
-8. 交易完成後 `redirect('/orders/<id>/pay')`
+8. 交易完成後 `refresh()`（頁首角標）再 `redirect('/orders/<id>/pay')`
 
 ### 9.2 取消訂單
 在交易內：條件更新狀態（`where: { id, status: { in: ['PENDING', 'PAID'] } }`）→ 成功後逐項回補庫存（`productId` 為 `null` 的明細略過）。

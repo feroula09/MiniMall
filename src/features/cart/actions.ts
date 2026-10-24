@@ -1,9 +1,10 @@
 "use server";
 
-import { Prisma } from "@prisma/client";
 import { refresh } from "next/cache";
 import { fail, type ActionResult } from "@/lib/action-result";
 import { requireUser } from "@/lib/auth-guard";
+import { isId } from "@/lib/ids";
+import { DB_BUSY_MESSAGE as BUSY, isDbError, isUniqueViolation } from "@/lib/db-errors";
 import { prisma } from "@/lib/prisma";
 import { purchaseLimit } from "@/lib/purchase-limit";
 import { addToCartSchema, removeCartItemSchema, updateCartItemSchema } from "./schemas";
@@ -11,14 +12,10 @@ import { checkAddQuantity } from "./summary";
 
 // 資料都沒有快取，異動後用 refresh() 讓頁首角標與購物車頁重新渲染
 
-const BUSY = "系統忙碌中，請稍後再試";
-const isDbError = (e: unknown) =>
-  e instanceof Prisma.PrismaClientKnownRequestError || e instanceof Prisma.PrismaClientUnknownRequestError;
-
 export async function addToCart(input: { productId: string; quantity: number }): Promise<ActionResult> {
   // 先確認登入；未登入時導向登入頁，登入後回到該商品（id 格式不對就回首頁）
   const rawId = input?.productId;
-  const back = typeof rawId === "string" && /^[a-z0-9]{1,64}$/i.test(rawId) ? `/products/${rawId}` : "/";
+  const back = isId(rawId) ? `/products/${rawId}` : "/";
   const user = await requireUser(back);
 
   const parsed = addToCartSchema.safeParse(input);
@@ -70,7 +67,7 @@ async function addQuantity(userId: string, productId: string, quantity: number):
     return null;
   } catch (e) {
     // 另一個請求剛好先建立了同一項目：改走一次條件累加
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+    if (isUniqueViolation(e)) {
       return (await incrementWithinLimit()).count === 1 ? null : explain();
     }
     throw e;
