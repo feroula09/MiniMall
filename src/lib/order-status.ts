@@ -30,6 +30,9 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   CANCELLED: "已取消",
 };
 
+/** 所有訂單狀態，依流程順序 */
+export const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABEL) as [OrderStatus, ...OrderStatus[]];
+
 /** 檢查 actor 能否對目前狀態執行動作；可以時回傳目標狀態，否則回傳 null */
 export function nextStatus(from: OrderStatus, action: OrderAction, actor: OrderActor): OrderStatus | null {
   const t = ORDER_TRANSITIONS[action];

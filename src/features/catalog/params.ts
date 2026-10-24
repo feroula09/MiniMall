@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { firstParam as first, pageParam, type RawSearchParams } from "@/lib/search-params";
 
 export const PAGE_SIZE = 12;
 
@@ -17,9 +18,6 @@ export type CatalogParams = {
   page: number;
 };
 
-type RawSearchParams = Record<string, string | string[] | undefined>;
-
-const first = (v: unknown) => (Array.isArray(v) ? v[0] : v);
 const emptyToUndefined = (v: unknown) => {
   const value = first(v);
   return typeof value === "string" && value.trim() === "" ? undefined : value;
@@ -37,7 +35,7 @@ const catalogParamsSchema = z.object({
   sort: z
     .preprocess(first, z.enum(SORT_OPTIONS.map((o) => o.value) as [SortValue, ...SortValue[]]))
     .catch("newest"),
-  page: z.preprocess(first, z.coerce.number().int().min(1).max(10_000)).catch(1),
+  page: pageParam,
 });
 
 export function parseCatalogParams(raw: RawSearchParams): CatalogParams {

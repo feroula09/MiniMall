@@ -6,6 +6,7 @@ import { fail, failFromZod, type ActionResult } from "@/lib/action-result";
 import { requireUser } from "@/lib/auth-guard";
 import { DB_BUSY_MESSAGE, isDbError, isUniqueViolation } from "@/lib/db-errors";
 import { isId } from "@/lib/ids";
+import { explainOrderConflict } from "@/lib/order-mutations";
 import { generateOrderNo } from "@/lib/order-no";
 import { transitionUpdate } from "@/lib/order-status";
 import { prisma } from "@/lib/prisma";
@@ -135,8 +136,9 @@ export async function payOrder(input: { orderId: string }): Promise<ActionResult
     const { where, data } = transitionUpdate("pay", "user");
     const { count } = await prisma.order.updateMany({ where: { id: orderId, userId: user.id, ...where }, data });
     if (count === 0) {
-      const exists = await prisma.order.count({ where: { id: orderId, userId: user.id } });
-      return fail(exists ? "訂單狀態已變更，無法付款" : "訂單不存在");
+      const { error, stale } = await explainOrderConflict(orderId, { userId: user.id }, "訂單狀態已變更，無法付款");
+      if (stale) refresh();
+      return fail(error);
     }
   } catch (e) {
     if (isDbError(e)) return fail(DB_BUSY_MESSAGE);

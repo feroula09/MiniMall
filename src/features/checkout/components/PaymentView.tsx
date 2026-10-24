@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/lib/auth-guard";
+import { isId } from "@/lib/ids";
 import { formatDateTime } from "@/lib/format-date";
 import { formatPrice } from "@/lib/money";
 import { ORDER_STATUS_LABEL } from "@/lib/order-status";
@@ -16,6 +17,7 @@ type Props = { params: Promise<{ id: string }> };
 /** 讀取路由參數、cookies 與資料庫，必須放在 Suspense 內 */
 export async function PaymentView({ params }: Props) {
   const { id } = await params;
+  if (!isId(id)) notFound();
   const user = await requireUser(`/orders/${id}/pay`);
   const order = await getOrderForPayment(user.id, id);
   if (!order) notFound();
