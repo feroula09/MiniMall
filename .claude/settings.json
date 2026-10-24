@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npx prisma *)",
+      "Bash(npx shadcn@latest add *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "PowerShell(npm run *)",
+      "PowerShell(npm install *)",
+      "PowerShell(npx tsc *)",
+      "PowerShell(npx vitest *)",
+      "PowerShell(npx prisma *)",
+      "PowerShell(npx shadcn@latest add *)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log *)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git rebase *)",
+      "Bash(npx prisma migrate reset *)",
+      "PowerShell(git push *)",
+      "PowerShell(git reset *)",
+      "PowerShell(git rebase *)",
+      "PowerShell(npx prisma migrate reset *)",
+      "Edit(.env*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "PowerShell(Remove-Item -Recurse *)"
+    ]
+  }
+}
