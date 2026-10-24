@@ -6,12 +6,12 @@
 
 | 類別 | 選用 | 說明 |
 |---|---|---|
-| 框架 | Next.js 16（App Router） | Server Components + Server Actions，預設 Turbopack |
+| 框架 | Next.js 16.4（App Router） | Server Components + Server Actions，Turbopack，**Cache Components + Partial Prefetching 開啟** |
 | 語言 | TypeScript（strict） | |
 | ORM | Prisma 6（≥ 6.2） | 經典 `prisma-client-js` generator，不使用 driver adapter |
 | 資料庫 | SQLite | 檔案 `prisma/dev.db`，只在本機執行 |
-| 樣式 | TailwindCSS 4 | CSS-first 設定（`@import "tailwindcss"`） |
-| UI 元件 | shadcn/ui | 元件複製進 `src/components/ui/` |
+| 樣式 | TailwindCSS 4 | CSS-first 設定（`@import "tailwindcss"`），由 `@tailwindcss/turbopack` loader 編譯 |
+| UI 元件 | shadcn/ui 4（base-nova） | 底層為 Base UI，元件複製進 `src/components/ui/`，圖示用 lucide-react |
 | 提示訊息 | sonner | 掛在根 layout |
 | 驗證 | zod | 表單與 Server Action 輸入驗證 |
 | 認證 | bcryptjs + jose | 自建 session（JWT 存 httpOnly cookie） |
@@ -28,6 +28,14 @@
 - **`proxy.ts` 只負責導向**（提升體驗），**不是安全邊界**；每個 Server Action 與受保護頁面都要自行呼叫 `requireUser()` / `requireAdmin()`
 - Client Component 只用在需要互動的地方（表單、數量選擇、上傳預覽等）
 
+### 2.1 Cache Components 規則
+- 讀取資料庫、`cookies()`、`params`、`searchParams` 屬於請求期資料，必須在 `<Suspense>` 邊界內讀取，否則 build 失敗
+- 頁面寫法固定為「同步外殼 + Suspense 內的非同步子元件」：page 本身不 `await`，把 `params`/`searchParams` 的 Promise 傳給子元件
+- layout 頂層不讀 session；Header 的登入狀態、購物車件數各自包在 Suspense 內串流
+- 預設**不快取**任何資料，確保庫存、價格即時；若之後要優化商品列表，再對 `catalog/queries.ts` 加 `'use cache'` + `cacheTag`，並在後台異動時 `updateTag`
+- `'use cache'` 範圍內不能呼叫 `cookies()` / `headers()`
+- GET Route Handler（`/uploads/[name]`）讀檔案時會自動在請求期執行，不需特別處理
+
 ## 3. 目錄結構
 
 原則：**按功能拆模組，每個功能的 actions、queries、schemas、components 分開存放，不把多個功能寫進同一個檔案。** `app/` 只放路由與組裝，業務邏輯放在 `features/`。
@@ -41,8 +49,9 @@ public/seed/                       # seed 用的商品佔位圖（建置時就�
 storage/uploads/                   # 後台上傳的圖片（gitignore）
 src/
   app/
-    layout.tsx                     # 根 layout：Header、Toaster
+    layout.tsx                     # 根 layout：html/body、Toaster
     (shop)/
+      layout.tsx                   # 前台版面：Header、Footer
       page.tsx                     # 首頁 = 商品列表
       products/[id]/page.tsx
       cart/page.tsx
@@ -163,7 +172,7 @@ model Product {
   description String
   price       Int                         // 單位：分
   stock       Int         @default(0)
-  image       String?                     // /seed/xxx.jpg 或 /uploads/<uuid>.webp
+  image       String?                     // /seed/xxx.svg 或 /uploads/<uuid>.webp
   isActive    Boolean     @default(true)
   categoryId  String
   category    Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -357,11 +366,13 @@ DATABASE_URL="file:./dev.db"
 SESSION_SECRET="<至少 32 字元的隨機字串>"
 ```
 
+`src/lib/env.ts` 以 zod 驗證上述變數（`SESSION_SECRET` 至少 32 字元），在 F4 實作 session 時加入；`lib/session.ts` 只透過它取得金鑰，未設定時直接拋錯而不是用空金鑰簽 JWT。
+
 ## 11. Seed 資料
 
 `prisma/seed.ts`，透過 `package.json` 的 `prisma.seed` 設定為 `tsx prisma/seed.ts`：
 - 分類 5 個：3C 電子、居家生活、服飾配件、美妝保養、食品飲料
-- 商品約 20 個，平均分佈於各分類，圖片使用 `public/seed/` 下的佔位圖，含 1–2 個庫存為 0、1 個下架的商品供測試
+- 商品約 20 個，平均分佈於各分類，圖片使用 `public/seed/*.svg` 佔位圖（依分類配色），含 1–2 個庫存為 0、1 個下架的商品供測試
 - 帳號：
   - 管理員 `admin@minimall.dev` / `admin1234`
   - 一般使用者 `user@minimall.dev` / `user1234`
@@ -373,7 +384,7 @@ SESSION_SECRET="<至少 32 字元的隨機字串>"
   - `lib/money.ts`：格式化、元 ↔ 分 轉換與邊界值
   - `lib/order-status.ts`：所有合法與非法狀態轉換
   - 各模組 `schemas.ts`：合法與非法輸入
-- **每個功能 commit 前的自檢**：`npx tsc --noEmit`、`npm run lint`、`npx vitest run`、`npm run build`，並以 `/code-review` 審查本次變更
+- **每個功能 commit 前的自檢**：`npm run typecheck`、`npm run lint`、`npm test`、`npm run build`，並以 `/code-review` 審查本次變更
 - **手動 / 瀏覽器走查**：依 PRD 第 7 節各里程碑的驗收重點
 
 ## 13. 常用指令
@@ -385,8 +396,8 @@ npx prisma db seed              # 寫入測試資料
 npm run dev                     # 開發模式
 npm run build && npm start      # 正式模式（驗證上傳圖片）
 npm run lint
-npx tsc --noEmit
-npx vitest run
+npm run typecheck               # next typegen + tsc
+npm test                        # vitest run
 npx prisma studio               # 檢視資料
 ```
 
@@ -396,6 +407,8 @@ npx prisma studio               # 檢視資料
 - `middleware.ts` 已改名為 `proxy.ts`
 - `params`、`searchParams`、`cookies()`、`headers()` 皆為非同步，需 `await`
 - 預設使用 Turbopack
+- 預設開啟 Cache Components，規則見 2.1；版本專屬文件在 `node_modules/next/dist/docs/`
+- `LayoutProps` / `PageProps` 為 `next typegen` 產生的全域型別
 
 **Prisma 6**
 - 6.2 起 SQLite 支援 `enum`，`Role`、`OrderStatus` 直接使用 Prisma 產生的型別
@@ -403,7 +416,7 @@ npx prisma studio               # 檢視資料
 
 **TailwindCSS 4**
 - 不使用 `tailwind.config.js`，主題設定寫在 CSS 的 `@theme`
-- PostCSS 外掛為 `@tailwindcss/postcss`
+- 不使用 PostCSS，改由 `next.config.ts` 的 `turbopack.rules` 掛 `@tailwindcss/turbopack` loader
 
 **SQLite**
 - 金額使用 `Int`（分），不使用 `Float`
