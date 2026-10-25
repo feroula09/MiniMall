@@ -1,0 +1,15 @@
+.git
+.github
+.claude
+node_modules
+.next
+coverage
+storage
+prisma/*.db
+prisma/*.db-journal
+.env*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+Dockerfile
+.dockerignore

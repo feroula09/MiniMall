@@ -21,6 +21,21 @@ npm run dev                     # http://localhost:3000
 - 管理員 `admin@minimall.dev` / `admin1234`
 - 一般使用者 `user@minimall.dev` / `user1234`
 
+## Docker
+
+每次 push 到 `master`，GitHub Actions 會先跑 typecheck、lint、test，通過後建置映像檔並推到 GitHub Packages。
+
+```bash
+docker run -d -p 3000:3000 \
+  -v minimall-data:/app/data \
+  -v minimall-uploads:/app/storage \
+  ghcr.io/feroula09/minimall:latest
+```
+
+- 第一次啟動會自動建立資料庫並寫入測試資料；之後重啟只執行 migration，不會清空資料。
+- 資料庫在 `/app/data`，上傳圖片在 `/app/storage`，兩個都要掛 volume 才不會遺失。
+- `SESSION_SECRET` 可用 `-e SESSION_SECRET=...` 指定；沒指定時會自動產生並存在 `/app/data`。
+
 ## 常用指令
 
 | 指令 | 說明 |
