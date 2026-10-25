@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ChevronRight, Package } from "lucide-react";
 import { Pagination } from "@/components/layout/Pagination";
-import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { OrderStatusBadge } from "@/components/order/OrderStatusBadge";
 import { ProductImage } from "@/components/ProductImage";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";

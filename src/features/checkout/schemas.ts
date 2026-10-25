@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { idSchema } from "@/lib/ids";
 
 export const checkoutSchema = z.object({
   receiverName: z.string().trim().min(1, "請輸入收件人").max(30, "收件人最多 30 個字元"),
@@ -16,4 +15,3 @@ export type CheckoutInput = z.infer<typeof checkoutSchema>;
 /** 使用者在結帳頁看到的合計（分），下單時與伺服器端計算的金額比對 */
 export const expectedTotalSchema = z.coerce.number().int().nonnegative();
 
-export const payOrderSchema = z.object({ orderId: idSchema });

@@ -92,28 +92,33 @@ src/
     orders/
       actions.ts                   # cancelOrder / confirmReceipt
       queries.ts                   # getMyOrders / getMyOrder
-      components/                  # OrderList OrderDetail OrderTimeline OrderStatusBadge
+      components/                  # OrderList OrderDetail OrderActions
     admin-dashboard/
       queries.ts                   # getDashboardStats
       components/                  # StatCard
     admin-category/
       actions.ts  queries.ts  schemas.ts  components/
     admin-product/
-      actions.ts  queries.ts  schemas.ts  components/   # ProductForm ImageUpload ProductTable
+      params.ts  actions.ts  queries.ts  schemas.ts  components/   # ProductTable ProductFilters ToggleActiveButton DeleteProductButton ProductEditor ProductForm ImageField
     admin-order/
-      actions.ts  queries.ts  components/
+      params.ts  actions.ts  queries.ts  schemas.ts  components/   # AdminOrderTable AdminOrderFilters AdminOrderDetail AdminOrderActions
   lib/
     prisma.ts                      # PrismaClient 單例
     session.ts                     # JWT 簽發 / 驗證、cookie 讀寫
     auth-guard.ts                  # getCurrentUser / requireUser / requireAdmin
     money.ts                       # formatPrice、元 ↔ 分 轉換
     order-status.ts                # 訂單狀態機
-    upload.ts                      # 圖片儲存與驗證
+    image-type.ts                  # 圖片格式與大小規則（前後端共用）
+    upload.ts                      # 圖片儲存、刪除、讀取（server-only）
+    form-data.ts                   # 讀取 FormData 文字欄位
     action-result.ts               # ActionResult 型別與輔助函式
     utils.ts                       # cn() 等（shadcn）
   components/
     ui/                            # shadcn 產生的元件
     layout/                        # Header Footer BrandLink Pagination AdminShell（後台外框與權限）AdminNav（後台選單）
+    order/                         # 前台與後台共用的訂單元件：OrderStatusBadge OrderTimeline OrderItemsCard ReceiverCard TimelineCard
+    form/                          # Field FormField FormError NativeSelect
+    ConfirmButton.tsx              # 按鈕 + 確認對話框（ConfirmDeleteButton 為刪除用的版本）
   proxy.ts
 ```
 

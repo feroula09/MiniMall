@@ -1,5 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
+import { refresh } from "next/cache";
+import { fail, type ActionResult } from "./action-result";
 import { transitionUpdate, type OrderActor } from "./order-status";
 import { prisma } from "./prisma";
 
@@ -32,15 +34,17 @@ export async function cancelOrderAndRestock(
 }
 
 /**
- * 條件式更新沒有改到任何訂單時，判斷原因：
- * 訂單不在 scope 內（不存在或不是自己的）→「訂單不存在」；否則是狀態已被改變 → conflictMessage。
- * stale 為 true 時，呼叫端應 refresh() 讓畫面顯示最新狀態。
+ * 條件式更新沒有改到任何訂單時，回傳給前端的結果：
+ * 訂單不在 scope 內（不存在或不是自己的）→「訂單不存在」；
+ * 否則是狀態剛被改變 → conflictMessage，並 refresh() 讓畫面顯示最新狀態。只能在 Server Action 內呼叫。
  */
-export async function explainOrderConflict(
+export async function orderConflict(
   orderId: string,
   scope: Prisma.OrderWhereInput,
   conflictMessage: string,
-): Promise<{ error: string; stale: boolean }> {
+): Promise<ActionResult> {
   const exists = (await prisma.order.count({ where: { id: orderId, ...scope } })) > 0;
-  return exists ? { error: conflictMessage, stale: true } : { error: "訂單不存在", stale: false };
+  if (!exists) return fail("訂單不存在");
+  refresh();
+  return fail(conflictMessage);
 }

@@ -5,13 +5,13 @@ import { redirect } from "next/navigation";
 import { fail, failFromZod, type ActionResult } from "@/lib/action-result";
 import { requireUser } from "@/lib/auth-guard";
 import { DB_BUSY_MESSAGE, isDbError, isUniqueViolation } from "@/lib/db-errors";
-import { isId } from "@/lib/ids";
-import { explainOrderConflict } from "@/lib/order-mutations";
+import { isId, orderIdSchema } from "@/lib/ids";
+import { orderConflict } from "@/lib/order-mutations";
 import { generateOrderNo } from "@/lib/order-no";
 import { transitionUpdate } from "@/lib/order-status";
 import { formText } from "@/lib/form-data";
 import { prisma } from "@/lib/prisma";
-import { checkoutSchema, expectedTotalSchema, payOrderSchema, type CheckoutInput } from "./schemas";
+import { checkoutSchema, expectedTotalSchema, type CheckoutInput } from "./schemas";
 
 export type CheckoutFormState = ActionResult & { values?: Partial<CheckoutInput> };
 
@@ -123,7 +123,7 @@ async function createOrder(userId: string, input: CheckoutInput, expectedTotal: 
 export async function payOrder(input: { orderId: string }): Promise<ActionResult> {
   const rawId = input?.orderId;
   const user = await requireUser(isId(rawId) ? `/orders/${rawId}/pay` : "/");
-  const parsed = payOrderSchema.safeParse(input);
+  const parsed = orderIdSchema.safeParse(input);
   if (!parsed.success) return fail("訂單不存在");
   const { orderId } = parsed.data;
 
@@ -131,11 +131,7 @@ export async function payOrder(input: { orderId: string }): Promise<ActionResult
     // 條件式更新：只有本人的待付款訂單會被改成已付款，同時按兩次也只會成功一次
     const { where, data } = transitionUpdate("pay", "user");
     const { count } = await prisma.order.updateMany({ where: { id: orderId, userId: user.id, ...where }, data });
-    if (count === 0) {
-      const { error, stale } = await explainOrderConflict(orderId, { userId: user.id }, "訂單狀態已變更，無法付款");
-      if (stale) refresh();
-      return fail(error);
-    }
+    if (count === 0) return await orderConflict(orderId, { userId: user.id }, "訂單狀態已變更，無法付款");
   } catch (e) {
     if (isDbError(e)) return fail(DB_BUSY_MESSAGE);
     throw e;

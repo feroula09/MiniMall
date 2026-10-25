@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, ClipboardList, DollarSign, Package, Truck } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
-import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { OrderStatusBadge } from "@/components/order/OrderStatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { requireAdmin } from "@/lib/auth-guard";

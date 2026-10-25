@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { firstParam, pageParam, type RawSearchParams } from "@/lib/search-params";
+import { optionalParam, pageParam, type RawSearchParams } from "@/lib/search-params";
 
 export const ADMIN_PAGE_SIZE = 20;
 
@@ -12,18 +12,13 @@ export type AdminProductParams = {
   page: number;
 };
 
-const optionalText = (v: unknown) => {
-  const value = firstParam(v);
-  return typeof value === "string" && value.trim() === "" ? undefined : value;
-};
-
 // 網址參數不合法時回到預設，不讓頁面報錯
 const schema = z.object({
   q: z
-    .preprocess(optionalText, z.string().trim().transform((s) => s.slice(0, 50)).optional())
+    .preprocess(optionalParam, z.string().trim().transform((s) => s.slice(0, 50)).optional())
     .catch(undefined),
-  category: z.preprocess(optionalText, z.string().regex(/^[a-z0-9-]+$/).optional()).catch(undefined),
-  active: z.preprocess(optionalText, z.enum(["true", "false"]).optional()).catch(undefined),
+  category: z.preprocess(optionalParam, z.string().regex(/^[a-z0-9-]+$/).optional()).catch(undefined),
+  active: z.preprocess(optionalParam, z.enum(["true", "false"]).optional()).catch(undefined),
   page: pageParam,
 });
 
